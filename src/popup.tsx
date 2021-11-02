@@ -3,16 +3,21 @@ import { render, useCallback, useEffect, useState } from 'preact/compat'
 type Command = {
   id: string
   title: string
-  group: string
-  onTrigger: () => void
+  group?: string
+  onTrigger: () => Promise<void>
+  description?: string
+  detail?: string
 }
 
 function CommandPalette() {
   const [commands, setCommands] = useState<Array<Command>>([])
+
   const addCommands = useCallback((group: string, commandsToAdd: Command[]) => {
     setCommands((commands) => {
       return [
-        ...commands.filter((command) => command.group !== group),
+        ...commands.filter(
+          (command) => !command.group || command.group !== group,
+        ),
         ...commandsToAdd,
       ]
     })
@@ -35,7 +40,7 @@ function CommandPalette() {
               return {
                 ...command,
                 group: payload.register.group,
-                onTrigger: () => {
+                onTrigger: async () => {
                   chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     func: (command) => {
@@ -77,14 +82,56 @@ function CommandPalette() {
           )
         },
       })
+
+      if (tab.url) {
+        addCommands('builtin', [
+          {
+            id: 'builtin.copyPageUrl',
+            title: 'Copy Page URL',
+            detail: tab.url,
+            onTrigger: async () => {
+              await navigator.clipboard.writeText(tab.url)
+            },
+          },
+        ])
+      }
+      if (tab.title) {
+        addCommands('builtin', [
+          {
+            id: 'builtin.copyPageTitle',
+            title: 'Copy Page Title',
+            detail: tab.title,
+            onTrigger: async () => {
+              await navigator.clipboard.writeText(tab.title)
+            },
+          },
+        ])
+      }
+      if (tab.title && tab.url) {
+        const markdown = `[${tab.title}](${tab.url})`
+        addCommands('builtin', [
+          {
+            id: 'builtin.copyPageTitleAndUrl',
+            title: 'Copy Page Title and URL as Markdown',
+            detail: markdown,
+            onTrigger: async () => {
+              await navigator.clipboard.writeText(markdown)
+            },
+          },
+        ])
+      }
     })
   }, [])
 
+  const onCommandSelect = useCallback(
+    async (command: Command): Promise<void> => {
+      await command.onTrigger()
+      window.close()
+    },
+    [],
+  )
   return (
-    <CommandPaletteTypeahead
-      commands={commands}
-      onSelect={(command) => command.onTrigger()}
-    />
+    <CommandPaletteTypeahead commands={commands} onSelect={onCommandSelect} />
   )
 }
 
@@ -101,6 +148,10 @@ function CommandPaletteTypeahead(props: {
         {props.commands.map((command) => (
           <li onClick={() => props.onSelect(command)} key={command.id}>
             {command.title}
+            {!!command.description && (
+              <span className="dim">&nbsp; {command.description}</span>
+            )}
+            {!!command.detail && <div className="dim">{command.detail}</div>}
           </li>
         ))}
       </ul>
