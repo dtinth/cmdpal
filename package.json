@@ -1,0 +1,24 @@
+{
+  "name": "@dtinth/cmdpal",
+  "version": "0.0.1",
+  "devDependencies": {
+    "parcel": "^2.0.0",
+    "preact": "^10.5.15",
+    "typescript": "^4.4.4",
+    "fuzzysort": "^1.1.4",
+    "@types/chrome": "^0.0.162"
+  },
+  "dependencies": {},
+  "scripts": {
+    "build": "parcel build",
+    "dev": "parcel watch"
+  },
+  "targets": {
+    "popup": {
+      "source": "src/popup.html",
+      "distDir": "dist",
+      "publicUrl": "/dist",
+      "optimize": false
+    }
+  }
+}

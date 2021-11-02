@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      addEventListener('cmdpal', (e) => {
+        const payload = e.detail
+        if (payload.open) {
+          dispatchEvent(
+            new CustomEvent('cmdpal', {
+              detail: {
+                register: {
+                  group: 'meow',
+                  commands: [
+                    {
+                      id: 'custom.meow',
+                      title: 'Say hello',
+                    },
+                  ],
+                },
+              },
+            }),
+          )
+        } else if (payload.execute) {
+          switch (payload.execute.command) {
+            case 'custom.meow':
+              alert('MEOW!')
+              break
+          }
+        }
+      })
+    </script>
+  </body>
+</html>
