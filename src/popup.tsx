@@ -87,7 +87,7 @@ function CommandPalette() {
         addCommands('builtin', [
           {
             id: 'builtin.copyPageUrl',
-            title: 'Copy Page URL',
+            title: 'Copy: Page URL',
             detail: tab.url,
             onTrigger: async () => {
               await navigator.clipboard.writeText(tab.url)
@@ -99,7 +99,7 @@ function CommandPalette() {
         addCommands('builtin', [
           {
             id: 'builtin.copyPageTitle',
-            title: 'Copy Page Title',
+            title: 'Copy: Page Title',
             detail: tab.title,
             onTrigger: async () => {
               await navigator.clipboard.writeText(tab.title)
@@ -112,7 +112,7 @@ function CommandPalette() {
         addCommands('builtin', [
           {
             id: 'builtin.copyPageTitleAndUrl',
-            title: 'Copy Page Title and URL as Markdown',
+            title: 'Copy: Page Title and URL as Markdown',
             detail: markdown,
             onTrigger: async () => {
               await navigator.clipboard.writeText(markdown)
