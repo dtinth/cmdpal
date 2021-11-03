@@ -1,4 +1,4 @@
-import { render, useCallback, useEffect, useState } from 'preact/compat'
+import { render, useCallback, useEffect, useRef, useState } from 'preact/compat'
 
 type Command = {
   id: string
@@ -7,10 +7,13 @@ type Command = {
   onTrigger: () => Promise<void>
   description?: string
   detail?: string
+  iconUrl?: string
 }
 
 function CommandPalette() {
   const [commands, setCommands] = useState<Array<Command>>([])
+  const [tabCommands, setTabCommands] = useState<Array<Command>>([])
+  const [currentText, setCurrentText] = useState('>')
 
   const addCommands = useCallback((group: string, commandsToAdd: Command[]) => {
     setCommands((commands) => {
@@ -24,6 +27,22 @@ function CommandPalette() {
   }, [])
 
   useEffect(() => {
+    chrome.tabs.query({}, (tabs) => {
+      setTabCommands(
+        tabs.map((tab) => {
+          return {
+            id: `tab-${tab.id}`,
+            title: tab.title,
+            onTrigger: async () => {
+              chrome.tabs.update(tab.id, { active: true })
+            },
+            detail: tab.url,
+            iconUrl: tab.favIconUrl,
+            group: 'tabs',
+          }
+        }),
+      )
+    })
     chrome.tabs.query({ active: true, currentWindow: true }, function ([tab]) {
       chrome.runtime.onMessage.addListener(function (
         payload: CmdpalEvent['detail'],
@@ -130,23 +149,50 @@ function CommandPalette() {
     },
     [],
   )
+
   return (
-    <CommandPaletteTypeahead commands={commands} onSelect={onCommandSelect} />
+    <CommandPaletteTypeahead
+      commands={currentText.startsWith('>') ? commands : tabCommands}
+      updateDelay={currentText.startsWith('>') ? 128 : 0}
+      onSelect={onCommandSelect}
+      defaultText=">"
+      onTextChanged={setCurrentText}
+    />
   )
 }
 
 function CommandPaletteTypeahead(props: {
   onSelect: (command: Command) => void
+  updateDelay: number
+  onTextChanged?: (text: string) => void
+  defaultText: string
   commands: Command[]
 }) {
+  const input = useRef<HTMLInputElement>()
+  const defaultText = useRef(props.defaultText)
+  useEffect(() => {
+    input.current.value = defaultText.current
+  }, [])
+  const onChange = useCallback(() => {
+    props.onTextChanged?.(input.current.value)
+  }, [props.onTextChanged])
   return (
     <>
       <div class="input-font">
-        <input id="text" autofocus class="input" />
+        <input
+          id="text"
+          autofocus
+          class="input"
+          ref={input}
+          onChange={onChange}
+        />
       </div>
       <ul>
         {props.commands.map((command) => (
           <li onClick={() => props.onSelect(command)} key={command.id}>
+            {!!command.iconUrl && (
+              <img src={command.iconUrl} height={16} width={16} />
+            )}
             {command.title}
             {!!command.description && (
               <span className="dim">&nbsp; {command.description}</span>
