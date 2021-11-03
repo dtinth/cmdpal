@@ -9,6 +9,9 @@
       body {
         background: #353433;
         color: #e9e8e7;
+        padding: 8px;
+        margin: 0;
+        font: 14px Arimo, sans-serif;
       }
       .input {
         background: #252423 linear-gradient(to bottom, #151413, #292827);
@@ -18,12 +21,43 @@
         box-sizing: border-box;
         width: 100%;
         padding: 3px;
+        border-radius: 3px;
       }
       .input-font {
-        font: 18px Arimo;
+        font: 18px Arimo, sans-serif;
       }
       .dim {
         opacity: 0.5;
+      }
+
+      .listbox {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .listbox-item {
+        padding: 3px 4px;
+        border-radius: 3px;
+        margin-bottom: 1px;
+      }
+      .listbox-item[data-selected='true'] {
+        background: #656463;
+      }
+      .listbox-item:not([data-selected='true']):hover {
+        background: #454443;
+        cursor: pointer;
+      }
+      .result-container {
+        margin-top: 8px;
+        height: 320px;
+        overflow-y: auto;
+      }
+
+      .hbox {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 4px;
       }
     </style>
   </head>

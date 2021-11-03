@@ -1,4 +1,5 @@
 import { render, useCallback, useEffect, useRef, useState } from 'preact/compat'
+import { go, highlight } from 'fuzzysort'
 
 type Command = {
   id: string
@@ -57,7 +58,10 @@ function CommandPalette() {
             payload.register.group,
             payload.register.commands.map((command) => {
               return {
-                ...command,
+                id: command.id,
+                title: command.title,
+                description: command.description,
+                detail: command.detail,
                 group: payload.register.group,
                 onTrigger: async () => {
                   chrome.scripting.executeScript({
@@ -161,6 +165,11 @@ function CommandPalette() {
   )
 }
 
+type ResultViewModel = {
+  commands: Command[]
+  selectedIndex: number
+}
+
 function CommandPaletteTypeahead(props: {
   onSelect: (command: Command) => void
   updateDelay: number
@@ -169,38 +178,103 @@ function CommandPaletteTypeahead(props: {
   commands: Command[]
 }) {
   const input = useRef<HTMLInputElement>()
-  const defaultText = useRef(props.defaultText)
+  const defaultTextRef = useRef(props.defaultText)
+  const [currentText, setCurrentText] = useState(props.defaultText)
+  const [result, setResult] = useState<ResultViewModel>({
+    commands: props.commands,
+    selectedIndex: 0,
+  })
+
   useEffect(() => {
-    input.current.value = defaultText.current
+    input.current.value = defaultTextRef.current
   }, [])
+
+  useEffect(() => {
+    const searchText = (
+      currentText.startsWith('>') ? currentText.substring(1) : currentText
+    ).trim()
+    setResult((result) => {
+      const nextCommands = filterCommands(searchText, props.commands)
+      const nextSelectedIndex = reconcileSelectedIndex(
+        result.commands,
+        nextCommands,
+        result.selectedIndex,
+      )
+      return { commands: nextCommands, selectedIndex: nextSelectedIndex }
+    })
+  }, [props.commands, currentText])
+
   const onChange = useCallback(() => {
-    props.onTextChanged?.(input.current.value)
+    const value = input.current.value
+    props.onTextChanged?.(value)
+    setCurrentText(value)
   }, [props.onTextChanged])
+
+  const onKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowUp': {
+          e.preventDefault()
+          setResult(selectResultAbove)
+          break
+        }
+        case 'ArrowDown': {
+          e.preventDefault()
+          setResult(selectResultBelow)
+          break
+        }
+        case 'Enter': {
+          e.preventDefault()
+          if (result.commands.length > 0) {
+            const command = result.commands[result.selectedIndex]
+            if (command) {
+              props.onSelect(command)
+            }
+          }
+          break
+        }
+      }
+    },
+    [props, result],
+  )
+
   return (
     <>
-      <div class="input-font">
+      <div className="input-font">
         <input
           id="text"
           autofocus
           class="input"
           ref={input}
           onChange={onChange}
+          onKeyDown={onKeyDown}
         />
       </div>
-      <ul>
-        {props.commands.map((command) => (
-          <li onClick={() => props.onSelect(command)} key={command.id}>
-            {!!command.iconUrl && (
-              <img src={command.iconUrl} height={16} width={16} />
-            )}
-            {command.title}
-            {!!command.description && (
-              <span className="dim">&nbsp; {command.description}</span>
-            )}
-            {!!command.detail && <div className="dim">{command.detail}</div>}
-          </li>
-        ))}
-      </ul>
+      <div className="result-container">
+        <ul className="listbox">
+          {result.commands.map((command, index) => (
+            <li
+              data-selected={index === result.selectedIndex}
+              className="listbox-item hbox"
+              onClick={() => props.onSelect(command)}
+              key={command.id}
+            >
+              {!!command.iconUrl && (
+                <img src={command.iconUrl} height={16} width={16} />
+              )}
+              <div>
+                {command.title}
+                {!!command.description && (
+                  <span className="dim">&nbsp; {command.description}</span>
+                )}
+                {!!command.detail && (
+                  <div className="dim">{command.detail}</div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
     </>
   )
 }
@@ -210,11 +284,53 @@ render(<CommandPalette />, document.querySelector('#cmdpal'))
 type CmdpalEvent = {
   detail: {
     register?: {
-      commands: { id: string; title: string }[]
+      commands: {
+        id: string
+        title: string
+        description?: string
+        detail?: string
+      }[]
       group: string
     }
     execute?: {
       command: string
     }
+  }
+}
+
+function filterCommands(searchText: string, commands: Command[]) {
+  if (!searchText) return commands
+  const results = go(searchText, commands, { key: 'title' })
+  return results.map((r) => r.obj)
+}
+
+function reconcileSelectedIndex(
+  commands: Command[],
+  nextCommands: Command[],
+  selectedIndex: number,
+) {
+  if (selectedIndex < 0) return 0
+  const originallySelectedCommand = commands[selectedIndex]
+  if (!originallySelectedCommand) return 0
+  const nextSelectedCommandIndex = nextCommands.findIndex(
+    (command: Command) => command.id === originallySelectedCommand.id,
+  )
+  if (nextSelectedCommandIndex === -1) return 0
+  return nextSelectedCommandIndex
+}
+
+function selectResultAbove(result: ResultViewModel): ResultViewModel {
+  if (result.selectedIndex === 0) {
+    return { ...result, selectedIndex: Math.max(0, result.commands.length - 1) }
+  } else {
+    return { ...result, selectedIndex: result.selectedIndex - 1 }
+  }
+}
+
+function selectResultBelow(result: ResultViewModel): ResultViewModel {
+  if (result.selectedIndex >= result.commands.length - 1) {
+    return { ...result, selectedIndex: 0 }
+  } else {
+    return { ...result, selectedIndex: result.selectedIndex + 1 }
   }
 }
