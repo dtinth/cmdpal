@@ -1,5 +1,13 @@
-import { render, useCallback, useEffect, useRef, useState } from 'preact/compat'
+import {
+  render,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'preact/compat'
 import { go, highlight } from 'fuzzysort'
+import { ComponentProps } from 'preact/src/index.js'
 
 type Command = {
   id: string
@@ -14,6 +22,7 @@ type Command = {
 function CommandPalette() {
   const [commands, setCommands] = useState<Array<Command>>([])
   const [tabCommands, setTabCommands] = useState<Array<Command>>([])
+  const [bookmarkCommands, setBookmarkCommands] = useState<Array<Command>>([])
   const [currentText, setCurrentText] = useState('>')
 
   const addCommands = useCallback((group: string, commandsToAdd: Command[]) => {
@@ -44,6 +53,24 @@ function CommandPalette() {
         }),
       )
     })
+
+    chrome.bookmarks.getRecent(100, (bookmarks) => {
+      const bookmarkCommands = bookmarks.flatMap((bookmark): Command[] => {
+        if (!bookmark.url) return []
+        return [
+          {
+            id: `bookmark-${bookmark.id}`,
+            title: bookmark.title,
+            detail: bookmark.url,
+            onTrigger: async () => {
+              chrome.tabs.create({ url: bookmark.url })
+            },
+          },
+        ]
+      })
+      setBookmarkCommands(bookmarkCommands)
+    })
+
     chrome.tabs.query({ active: true, currentWindow: true }, function ([tab]) {
       chrome.runtime.onMessage.addListener(function (
         payload: CmdpalEvent['detail'],
@@ -53,6 +80,7 @@ function CommandPalette() {
         if (!sender.tab || sender.tab.id !== tab.id) {
           return
         }
+
         if (payload.register) {
           addCommands(
             payload.register.group,
@@ -154,10 +182,48 @@ function CommandPalette() {
     [],
   )
 
+  type TypeaheadProps = Pick<
+    ComponentProps<typeof CommandPaletteTypeahead>,
+    'commands' | 'updateDelay' | 'showRecentWhenNoQueryText' | 'stripPrefix'
+  >
+
+  const commandMode = currentText.startsWith('>')
+  const commandsTypeahead = useMemo((): TypeaheadProps | undefined => {
+    if (!commandMode) return
+    return {
+      commands: commands,
+      updateDelay: 128,
+      showRecentWhenNoQueryText: true,
+      stripPrefix: 1,
+    }
+  }, [commandMode, commands])
+
+  const bookmarkMode = currentText.startsWith('#')
+  const bookmarksTypeahead = useMemo((): TypeaheadProps | undefined => {
+    if (!bookmarkMode) return
+    return {
+      commands: bookmarkCommands,
+      updateDelay: 0,
+      showRecentWhenNoQueryText: false,
+      stripPrefix: 1,
+    }
+  }, [bookmarkMode, bookmarkCommands])
+
+  const tabsTypeahead = useMemo((): TypeaheadProps => {
+    return {
+      commands: tabCommands,
+      updateDelay: 0,
+      showRecentWhenNoQueryText: false,
+      stripPrefix: 0,
+    }
+  }, [tabCommands])
+
+  const typeaheadProps =
+    commandsTypeahead || bookmarksTypeahead || tabsTypeahead
+
   return (
     <CommandPaletteTypeahead
-      commands={currentText.startsWith('>') ? commands : tabCommands}
-      updateDelay={currentText.startsWith('>') ? 128 : 0}
+      {...typeaheadProps}
       onSelect={onCommandSelect}
       defaultText=">"
       onTextChanged={setCurrentText}
@@ -173,6 +239,8 @@ type ResultViewModel = {
 function CommandPaletteTypeahead(props: {
   onSelect: (command: Command) => void
   updateDelay: number
+  showRecentWhenNoQueryText: boolean
+  stripPrefix: number
   onTextChanged?: (text: string) => void
   defaultText: string
   commands: Command[]
@@ -190,9 +258,7 @@ function CommandPaletteTypeahead(props: {
   }, [])
 
   useEffect(() => {
-    const searchText = (
-      currentText.startsWith('>') ? currentText.substring(1) : currentText
-    ).trim()
+    const searchText = currentText.substring(props.stripPrefix).trim()
     setResult((result) => {
       const nextCommands = filterCommands(searchText, props.commands)
       const nextSelectedIndex = reconcileSelectedIndex(
@@ -202,7 +268,7 @@ function CommandPaletteTypeahead(props: {
       )
       return { commands: nextCommands, selectedIndex: nextSelectedIndex }
     })
-  }, [props.commands, currentText])
+  }, [props.commands, props.stripPrefix, currentText])
 
   const onChange = useCallback(() => {
     const value = input.current.value
