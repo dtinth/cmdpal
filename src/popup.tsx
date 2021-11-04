@@ -1,7 +1,9 @@
 import {
+  forwardRef,
   render,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -13,17 +15,25 @@ type Command = {
   id: string
   title: string
   group?: string
-  onTrigger: () => Promise<void>
+  onTrigger: () => Promise<false | void>
   description?: string
   detail?: string
   iconUrl?: string
 }
 
 function CommandPalette() {
+  const typeaheadRef = useRef<any>(null)
   const [commands, setCommands] = useState<Array<Command>>([])
   const [tabCommands, setTabCommands] = useState<Array<Command>>([])
   const [bookmarkCommands, setBookmarkCommands] = useState<Array<Command>>([])
+  const [bookmarkSearchResultCommands, setBookmarkSearchResultCommands] =
+    useState<Array<Command>>([])
   const [currentText, setCurrentText] = useState('>')
+
+  const setInputText = useCallback((text: string) => {
+    setCurrentText(text)
+    typeaheadRef.current.setInputText(text)
+  }, [])
 
   const addCommands = useCallback((group: string, commandsToAdd: Command[]) => {
     setCommands((commands) => {
@@ -55,19 +65,7 @@ function CommandPalette() {
     })
 
     chrome.bookmarks.getRecent(100, (bookmarks) => {
-      const bookmarkCommands = bookmarks.flatMap((bookmark): Command[] => {
-        if (!bookmark.url) return []
-        return [
-          {
-            id: `bookmark-${bookmark.id}`,
-            title: bookmark.title,
-            detail: bookmark.url,
-            onTrigger: async () => {
-              chrome.tabs.create({ url: bookmark.url })
-            },
-          },
-        ]
-      })
+      const bookmarkCommands = bookmarksToCommands(bookmarks)
       setBookmarkCommands(bookmarkCommands)
     })
 
@@ -176,8 +174,10 @@ function CommandPalette() {
 
   const onCommandSelect = useCallback(
     async (command: Command): Promise<void> => {
-      await command.onTrigger()
-      window.close()
+      const result = await command.onTrigger()
+      if (result !== false) {
+        window.close()
+      }
     },
     [],
   )
@@ -201,13 +201,66 @@ function CommandPalette() {
   const bookmarkMode = currentText.startsWith('#')
   const bookmarksTypeahead = useMemo((): TypeaheadProps | undefined => {
     if (!bookmarkMode) return
+    const ids = new Set(bookmarkCommands.map((command) => command.id))
     return {
-      commands: bookmarkCommands,
+      commands: [
+        ...bookmarkCommands,
+        ...bookmarkSearchResultCommands.filter(
+          (command) => !ids.has(command.id),
+        ),
+      ],
       updateDelay: 0,
       showRecentWhenNoQueryText: false,
       stripPrefix: 1,
     }
-  }, [bookmarkMode, bookmarkCommands])
+  }, [bookmarkMode, bookmarkCommands, bookmarkSearchResultCommands])
+  useEffect(() => {
+    if (!bookmarkMode) return
+    const searchQuery = currentText.slice(1)
+    if (!searchQuery) return
+    chrome.bookmarks.search(searchQuery, (bookmarks) => {
+      setBookmarkSearchResultCommands(bookmarksToCommands(bookmarks))
+    })
+  }, [bookmarkMode, currentText])
+
+  const helpMode = currentText.startsWith('?')
+  const helpTypeahead = useMemo((): TypeaheadProps | undefined => {
+    if (!helpMode) return
+    return {
+      commands: [
+        {
+          id: 'help.tabs',
+          title: '…',
+          description: 'Search Open Tabs',
+          onTrigger: async () => {
+            setInputText('')
+            return false
+          },
+        },
+        {
+          id: 'help.cmd',
+          title: '>',
+          description: 'Show and Run Commands',
+          onTrigger: async () => {
+            setInputText('>')
+            return false
+          },
+        },
+        {
+          id: 'help.bookmark',
+          title: '#',
+          description: 'Search Bookmarks',
+          onTrigger: async () => {
+            setInputText('#')
+            return false
+          },
+        },
+      ],
+      updateDelay: 0,
+      showRecentWhenNoQueryText: false,
+      stripPrefix: 1,
+    }
+  }, [helpMode])
 
   const tabsTypeahead = useMemo((): TypeaheadProps => {
     return {
@@ -219,7 +272,7 @@ function CommandPalette() {
   }, [tabCommands])
 
   const typeaheadProps =
-    commandsTypeahead || bookmarksTypeahead || tabsTypeahead
+    commandsTypeahead || helpTypeahead || bookmarksTypeahead || tabsTypeahead
 
   return (
     <CommandPaletteTypeahead
@@ -227,13 +280,31 @@ function CommandPalette() {
       onSelect={onCommandSelect}
       defaultText=">"
       onTextChanged={setCurrentText}
+      typeaheadRef={typeaheadRef}
     />
   )
 }
 
 type ResultViewModel = {
   commands: Command[]
+  searchedText: string
   selectedIndex: number
+}
+
+function bookmarksToCommands(bookmarks: chrome.bookmarks.BookmarkTreeNode[]) {
+  return bookmarks.flatMap((bookmark): Command[] => {
+    if (!bookmark.url) return []
+    return [
+      {
+        id: `bookmark-${bookmark.id}`,
+        title: bookmark.title,
+        detail: bookmark.url,
+        onTrigger: async () => {
+          chrome.tabs.create({ url: bookmark.url })
+        },
+      },
+    ]
+  })
 }
 
 function CommandPaletteTypeahead(props: {
@@ -244,6 +315,7 @@ function CommandPaletteTypeahead(props: {
   onTextChanged?: (text: string) => void
   defaultText: string
   commands: Command[]
+  typeaheadRef: any
 }) {
   const input = useRef<HTMLInputElement>()
   const defaultTextRef = useRef(props.defaultText)
@@ -251,7 +323,18 @@ function CommandPaletteTypeahead(props: {
   const [result, setResult] = useState<ResultViewModel>({
     commands: props.commands,
     selectedIndex: 0,
+    searchedText: '',
   })
+
+  props.typeaheadRef.current = useMemo(
+    () => ({
+      setInputText: (text: string) => {
+        setCurrentText(text)
+        input.current.value = text
+      },
+    }),
+    [],
+  )
 
   useEffect(() => {
     input.current.value = defaultTextRef.current
@@ -261,12 +344,19 @@ function CommandPaletteTypeahead(props: {
     const searchText = currentText.substring(props.stripPrefix).trim()
     setResult((result) => {
       const nextCommands = filterCommands(searchText, props.commands)
-      const nextSelectedIndex = reconcileSelectedIndex(
-        result.commands,
-        nextCommands,
-        result.selectedIndex,
-      )
-      return { commands: nextCommands, selectedIndex: nextSelectedIndex }
+      const nextSelectedIndex =
+        result.searchedText === searchText
+          ? reconcileSelectedIndex(
+              result.commands,
+              nextCommands,
+              result.selectedIndex,
+            )
+          : 0
+      return {
+        commands: nextCommands,
+        selectedIndex: nextSelectedIndex,
+        searchedText: searchText,
+      }
     })
   }, [props.commands, props.stripPrefix, currentText])
 
