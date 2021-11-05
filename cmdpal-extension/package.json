@@ -11,7 +11,7 @@
   "dependencies": {},
   "scripts": {
     "build": "parcel build",
-    "dev": "parcel watch"
+    "dev": "parcel watch --no-hmr"
   },
   "targets": {
     "popup": {
