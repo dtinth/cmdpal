@@ -1,5 +1,5 @@
 {
-  "name": "@dtinth/cmdpal",
+  "name": "@dtinth/cmdpal-extension",
   "version": "0.0.1",
   "devDependencies": {
     "parcel": "^2.0.0",
@@ -16,7 +16,7 @@
   "targets": {
     "popup": {
       "source": "src/popup.html",
-      "distDir": "dist",
+      "distDir": "extension/dist",
       "publicUrl": "/dist",
       "optimize": false
     }

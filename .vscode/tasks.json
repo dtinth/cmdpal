@@ -2,11 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "npm",
-      "script": "dev",
-      "problemMatcher": [],
-      "label": "npm: dev",
-      "detail": "parcel watch",
+      "type": "shell",
+      "label": "cmdpal-extension: dev",
+      "command": "cd cmdpal-extension && npm run dev",
       "group": {
         "kind": "build",
         "isDefault": true
