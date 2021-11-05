@@ -1,0 +1,13 @@
+{
+  "name": "cmdpal-integration-example",
+  "description": "Some example integration for cmdpal",
+  "version": "1.0",
+  "manifest_version": 3,
+  "permissions": [],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-script.js"]
+    }
+  ]
+}

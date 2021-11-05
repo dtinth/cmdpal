@@ -44,7 +44,7 @@ Wait for user to open the command palette:
 
 ```js
 addEventListener('cmdpal', (e) => {
-  if (e.details.open) {
+  if (e.detail.open) {
     onCommandPaletteOpen()
   }
 })
@@ -74,13 +74,13 @@ function onCommandPaletteOpen() {
 }
 ```
 
-When the user selects the command, **cmdpal** dispatches the `cmdpal` event with `e.details.execute`.
+When the user selects the command, **cmdpal** dispatches the `cmdpal` event with `e.detail.execute`.
 
 ```js
 addEventListener('cmdpal', (e) => {
-  if (e.details.execute) {
-    switch (e.details.execute.command) {
-      case 'custom.meow':
+  if (e.detail.execute) {
+    switch (e.detail.execute.command) {
+      case 'custom.hello':
         alert('meow')
         break
     }
@@ -89,3 +89,5 @@ addEventListener('cmdpal', (e) => {
 ```
 
 Look at [`testpage.html`](testpage.html) for a complete example.
+
+Look at [`example-integration`](example-integration) for an example of a Chrome extension that uses a content script to integrate with cmdpal.

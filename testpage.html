@@ -10,7 +10,7 @@
     Open cmdpal to see the registered command "Say Hello".
     <script>
       addEventListener('cmdpal', (e) => {
-        if (e.details.open) {
+        if (e.detail.open) {
           onCommandPaletteOpen()
         }
       })
@@ -36,9 +36,9 @@
       }
 
       addEventListener('cmdpal', (e) => {
-        if (e.details.execute) {
-          switch (e.details.execute.command) {
-            case 'custom.meow':
+        if (e.detail.execute) {
+          switch (e.detail.execute.command) {
+            case 'custom.hello':
               alert('meow')
               break
           }
