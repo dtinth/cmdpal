@@ -1,2 +1,3 @@
 * xref:index.adoc[]
 * xref:extend.adoc[]
+* https://github.com/dtinth/cmdpal#development[Development]
