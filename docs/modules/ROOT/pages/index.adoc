@@ -1,0 +1,17 @@
+= cmdpal
+
+cmdpal is a Chrome extension that gives you a command palette.
+
+This extension is designed to be minimal and cannot do anything much on its own.
+It’s designed to be extended by other extensions and websites.
+Therefore, the core extension does not require permissions like “read and change your data on the websites you visit.”
+
+== Usage
+
+After installing the extension, set up your keyboard shortcut by going to *chrome://extensions/shortcuts* and set a shortcut to *Activate the extension*. Personally I use kbd:[Cmd+Shift+,]. Refresh the page to make sure that you are a keyboard shortcut is saved (this is a Chrome bug). Then restart Chrome for the shortcut to take effect (also a Chrome bug).
+
+Then press the shortcut to activate the extension. You should see a list of things that you can do, depending on the prefix.
+
+* `>` — Run a command.
+* `#` — Search for a bookmark.
+* (no prefix) — Switch to an open tab.

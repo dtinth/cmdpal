@@ -1,0 +1,69 @@
+= Integrating with cmdpal
+
+**cmdpal** can be extended by communicating with the active tab via DOM events.
+This makes **cmdpal** extensible by websites, content scripts, and user scripts.
+First, listen to the `cmdpal` event:
+
+[source,js]
+----
+addEventListener('cmdpal', (e) => {
+  // Your code here
+})
+----
+
+Wait for user to open the command palette:
+
+[source,js]
+----
+addEventListener('cmdpal', (e) => {
+  if (e.detail.open) {
+    onCommandPaletteOpen()
+  }
+})
+----
+
+When the command palette is open, register available commands to be shown on the command palette:
+
+[source,js]
+----
+function onCommandPaletteOpen() {
+  dispatchEvent(
+    new CustomEvent('cmdpal', {
+      detail: {
+        register: {
+          group: 'hello',
+          commands: [
+            {
+              id: 'custom.hello',
+              title: 'Say hello',
+              description: '^_^',
+              detail: 'Displays an alert',
+            },
+          ],
+        },
+      },
+    }),
+  )
+}
+----
+
+When the user selects the command, **cmdpal** dispatches the `cmdpal` event with `e.detail.execute`.
+
+[source,js]
+----
+addEventListener('cmdpal', (e) => {
+  if (e.detail.execute) {
+    switch (e.detail.execute.command) {
+      case 'custom.hello':
+        alert('meow')
+        break
+    }
+  }
+})
+----
+
+Look at https://github.com/dtinth/cmdpal/blob/main/testpage.html[`testpage.html`] for a complete example based on the above code.
+
+Look at https://github.com/dtinth/cmdpal/tree/main/example-integration[`example-integration`] for an example of a Chrome extension that uses a content script to integrate with cmdpal. It provides one new command to copy all link found on the webpage.
+
+Look at https://github.com/dtinth/cmdpal/blob/main/cmdpal-extension/src/types.ts[`types.ts`] for the type definition of a `cmdpal` event object.

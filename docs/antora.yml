@@ -1,0 +1,5 @@
+name: cmdpal
+version: master
+title: 'cmdpal'
+nav:
+  - modules/ROOT/nav.adoc
