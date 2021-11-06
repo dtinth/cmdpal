@@ -2,6 +2,9 @@
 
 **cmdpal** can be extended by communicating with the active tab via DOM events.
 This makes **cmdpal** extensible by websites, content scripts, and user scripts.
+
+image::extension.svg[]
+
 First, listen to the `cmdpal` event:
 
 [source,js]
