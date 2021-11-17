@@ -296,6 +296,7 @@ function CommandPaletteTypeahead(props: {
           e.preventDefault()
           if (props.inputBox) {
             props.inputBox.callback(input.current.value)
+            break
           }
           if (result.commands.length > 0) {
             const command = result.commands[result.selectedIndex]
