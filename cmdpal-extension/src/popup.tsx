@@ -11,7 +11,7 @@ import {
 import { go, highlight } from 'fuzzysort'
 import { ComponentProps } from 'preact/src/index.js'
 import { registerPageCommands } from './PageCommands'
-import { Command } from './types'
+import { Command, InputBox, InputBoxOptions } from './types'
 
 function CommandPalette() {
   const typeaheadRef = useRef<any>(null)
@@ -21,6 +21,7 @@ function CommandPalette() {
   const [bookmarkSearchResultCommands, setBookmarkSearchResultCommands] =
     useState<Array<Command>>([])
   const [currentText, setCurrentText] = useState('>')
+  const [inputBox, setInputBox] = useState<InputBox>(null)
 
   const setInputText = useCallback((text: string) => {
     setCurrentText(text)
@@ -37,6 +38,22 @@ function CommandPalette() {
       ]
     })
   }, [])
+
+  const showInputBox = useCallback(
+    (options: InputBoxOptions): Promise<string> => {
+      return new Promise((resolve, _) => {
+        setInputText('')
+        setInputBox({
+          options: options,
+          callback: (input: string) => {
+            setInputBox(null)
+            resolve(input)
+          },
+        })
+      })
+    },
+    [],
+  )
 
   useEffect(() => {
     chrome.tabs.query({}, (tabs) => {
@@ -62,7 +79,7 @@ function CommandPalette() {
     })
 
     chrome.tabs.query({ active: true, currentWindow: true }, function ([tab]) {
-      registerPageCommands(tab, addCommands)
+      registerPageCommands(tab, addCommands, showInputBox)
     })
   }, [])
 
@@ -175,6 +192,7 @@ function CommandPalette() {
       defaultText=">"
       onTextChanged={setCurrentText}
       typeaheadRef={typeaheadRef}
+      inputBox={inputBox}
     />
   )
 }
@@ -210,6 +228,7 @@ function CommandPaletteTypeahead(props: {
   defaultText: string
   commands: Command[]
   typeaheadRef: any
+  inputBox: InputBox
 }) {
   const input = useRef<HTMLInputElement>()
   const defaultTextRef = useRef(props.defaultText)
@@ -275,6 +294,9 @@ function CommandPaletteTypeahead(props: {
         }
         case 'Enter': {
           e.preventDefault()
+          if (props.inputBox) {
+            props.inputBox.callback(input.current.value)
+          }
           if (result.commands.length > 0) {
             const command = result.commands[result.selectedIndex]
             if (command) {
@@ -302,27 +324,33 @@ function CommandPaletteTypeahead(props: {
       </div>
       <div className="result-container">
         <ul className="listbox">
-          {result.commands.map((command, index) => (
-            <li
-              data-selected={index === result.selectedIndex}
-              className="listbox-item hbox"
-              onClick={() => props.onSelect(command)}
-              key={command.id}
-            >
-              {!!command.iconUrl && (
-                <img src={command.iconUrl} height={16} width={16} />
-              )}
-              <div>
-                {command.title}
-                {!!command.description && (
-                  <span className="dim">&nbsp; {command.description}</span>
-                )}
-                {!!command.detail && (
-                  <div className="dim">{command.detail}</div>
-                )}
-              </div>
+          {props.inputBox ? (
+            <li className="listbox-item hbox">
+              {props.inputBox.options.description}
             </li>
-          ))}
+          ) : (
+            result.commands.map((command, index) => (
+              <li
+                data-selected={index === result.selectedIndex}
+                className="listbox-item hbox"
+                onClick={() => props.onSelect(command)}
+                key={command.id}
+              >
+                {!!command.iconUrl && (
+                  <img src={command.iconUrl} height={16} width={16} />
+                )}
+                <div>
+                  {command.title}
+                  {!!command.description && (
+                    <span className="dim">&nbsp; {command.description}</span>
+                  )}
+                  {!!command.detail && (
+                    <div className="dim">{command.detail}</div>
+                  )}
+                </div>
+              </li>
+            ))
+          )}
         </ul>
       </div>
     </>

@@ -1,8 +1,9 @@
-import { CmdpalEvent, Command } from './types'
+import { CmdpalEvent, Command, InputBoxOptions } from './types'
 
 export function registerPageCommands(
   tab,
   addCommands: (group: string, commands: Command[]) => void,
+  showInputBox: (options: InputBoxOptions) => Promise<string>,
 ) {
   chrome.runtime.onMessage.addListener(function (
     payload: CmdpalEvent['detail'],
@@ -105,4 +106,20 @@ export function registerPageCommands(
       },
     ])
   }
+
+  addCommands('builtin', [
+    {
+      id: 'builtin.google',
+      title: 'Search: search by Google',
+      detail: 'Search the keyword by Google in a new tab',
+      onTrigger: async () => {
+        await showInputBox({
+          description:
+            "Enter the keyword to search (Press 'Enter' to confirm or 'Escape' to cancel)",
+        }).then((input: string) => {
+          window.open(`https://www.google.com/search?q=${input}`, '_blank')
+        })
+      },
+    },
+  ])
 }

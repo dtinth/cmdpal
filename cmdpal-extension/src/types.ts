@@ -51,3 +51,12 @@ export type Command = {
   detail?: string
   iconUrl?: string
 }
+
+export type InputBoxOptions = {
+  description: string
+}
+
+export type InputBox = {
+  options: InputBoxOptions
+  callback: (input: string) => void
+}
