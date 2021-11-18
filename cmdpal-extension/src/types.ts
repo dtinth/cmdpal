@@ -30,6 +30,9 @@ export type CmdpalEvent = {
 
         /** Extra text that is displayed below the command. */
         detail?: string
+
+        /** Extra input box for the command. */
+        inputBox?: InputBoxOptions
       }[]
     }
 
@@ -37,7 +40,10 @@ export type CmdpalEvent = {
      * Fired by cmdpal when a command will be executed.
      */
     execute?: {
+      /** Command id */
       command: string
+      /** Text input from inputBox */
+      textInput?: string
     }
   }
 }
@@ -58,5 +64,5 @@ export type InputBoxOptions = {
 
 export type InputBox = {
   options: InputBoxOptions
-  callback: (input: string) => void
+  callback: (textInput: string) => void
 }

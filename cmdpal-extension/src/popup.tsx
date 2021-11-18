@@ -45,9 +45,9 @@ function CommandPalette() {
         setInputText('')
         setInputBox({
           options: options,
-          callback: (input: string) => {
+          callback: (textInput: string) => {
             setInputBox(null)
-            resolve(input)
+            resolve(textInput)
           },
         })
       })

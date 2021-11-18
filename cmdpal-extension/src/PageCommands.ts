@@ -25,18 +25,25 @@ export function registerPageCommands(
             detail: command.detail,
             group: payload.register.group,
             onTrigger: async () => {
+              let textInput
+              if (command.inputBox != null) {
+                textInput = await showInputBox(command.inputBox)
+              }
               chrome.scripting.executeScript({
                 target: { tabId: tab.id },
-                func: (command) => {
+                func: (command, textInput) => {
                   window.dispatchEvent(
                     new CustomEvent('cmdpal', {
                       detail: {
-                        execute: { command: command.id },
+                        execute: {
+                          command: command.id,
+                          textInput: textInput,
+                        },
                       },
                     }),
                   )
                 },
-                args: [command],
+                args: [command, textInput],
               })
             },
           }
@@ -116,8 +123,8 @@ export function registerPageCommands(
         await showInputBox({
           description:
             "Enter the keyword to search (Press 'Enter' to confirm or 'Escape' to cancel)",
-        }).then((input: string) => {
-          window.open(`https://www.google.com/search?q=${input}`, '_blank')
+        }).then((textInput: string) => {
+          window.open(`https://www.google.com/search?q=${textInput}`, '_blank')
         })
       },
     },
