@@ -116,15 +116,15 @@ export function registerPageCommands(
 
   addCommands('builtin', [
     {
-      id: 'builtin.google',
-      title: 'Search: search by Google',
-      detail: 'Search the keyword by Google in a new tab',
+      id: 'builtin.wolframalpha',
+      title: 'Calculate: calculate and explain computational',
+      detail: 'Calculate and explain the input using WolframAlpha',
       onTrigger: async () => {
         await showInputBox({
           description:
-            "Enter the keyword to search (Press 'Enter' to confirm or 'Escape' to cancel)",
+            "Enter what you want to calculate (Press 'Enter' to confirm or 'Escape' to cancel)",
         }).then((textInput: string) => {
-          window.open(`https://www.google.com/search?q=${textInput}`, '_blank')
+          window.open(`https://www.wolframalpha.com/input/?i=${textInput}`, '_blank')
         })
       },
     },
