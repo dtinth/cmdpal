@@ -1,8 +1,9 @@
-import { CmdpalEvent, Command } from './types'
+import { CmdpalEvent, Command, InputBoxOptions } from './types'
 
 export function registerPageCommands(
   tab,
   addCommands: (group: string, commands: Command[]) => void,
+  showInputBox: (options: InputBoxOptions) => Promise<string>,
 ) {
   chrome.runtime.onMessage.addListener(function (
     payload: CmdpalEvent['detail'],
@@ -24,18 +25,25 @@ export function registerPageCommands(
             detail: command.detail,
             group: payload.register.group,
             onTrigger: async () => {
+              let textInput
+              if (command.inputBox != null) {
+                textInput = await showInputBox(command.inputBox)
+              }
               chrome.scripting.executeScript({
                 target: { tabId: tab.id },
-                func: (command) => {
+                func: (command, textInput) => {
                   window.dispatchEvent(
                     new CustomEvent('cmdpal', {
                       detail: {
-                        execute: { command: command.id },
+                        execute: {
+                          command: command.id,
+                          textInput: textInput,
+                        },
                       },
                     }),
                   )
                 },
-                args: [command],
+                args: [command, textInput],
               })
             },
           }
@@ -105,4 +113,20 @@ export function registerPageCommands(
       },
     ])
   }
+
+  addCommands('builtin', [
+    {
+      id: 'builtin.wolframalpha',
+      title: 'Calculate: calculate and explain computational',
+      detail: 'Calculate and explain the input using WolframAlpha',
+      onTrigger: async () => {
+        await showInputBox({
+          description:
+            "Enter what you want to calculate (Press 'Enter' to confirm or 'Escape' to cancel)",
+        }).then((textInput: string) => {
+          window.open(`https://www.wolframalpha.com/input/?i=${textInput}`, '_blank')
+        })
+      },
+    },
+  ])
 }
